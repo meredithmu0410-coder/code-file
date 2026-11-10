@@ -1,139 +1,115 @@
-const symbols = ["🍎","🍌","🍇","🍓","🥝","🍒","🥭","🍑"];
 const boardEl = document.getElementById("gameBoard");
-const stepEl = document.getElementById("stepCount");
-const matchEl = document.getElementById("matchCount");
-const timeEl = document.getElementById("timeCount");
 const winModal = document.getElementById("winModal");
-const finalStepEl = document.getElementById("finalStep");
-const finalTimeEl = document.getElementById("finalTime");
-const restartBtn = document.getElementById("restartBtn");
-const playAgainBtn = document.getElementById("playAgainBtn");
-const diffBtns = document.querySelectorAll(".diff-btn");
+const allClearModal = document.getElementById("allClearModal");
+const winMsgEl = document.getElementById("winMsg");
+const nextLevelBtn = document.getElementById("nextLevelBtn");
+const restartAllBtn = document.getElementById("restartAllBtn");
+const btnUndo = document.getElementById("btnUndo");
+const btnReset = document.getElementById("btnReset");
 
-let config = {rows:4, cols:4};
-let cardList = [];
-let openedCards = [];
-let isLock = false;
-let step = 0;
-let matched = 0;
-let totalPairs = 0;
-let timer = null;
-let seconds = 0;
+const levels = [
+  [3, 3, { r: 0, c: 0 }, { r: 2, c: 2 }, []],
+  [3, 3, { r: 2, c: 2 }, { r: 0, c: 0 }, [[1, 1]]],
+  [4, 3, { r: 0, c: 1 }, { r: 3, c: 0 }, [[2, 1]]],
+  [4, 4, { r: 1, c: 1 }, { r: 1, c: 3 }, [[1, 2], [2, 1]]],
+  [4, 4, { r: 0, c: 0 }, { r: 3, c: 3 }, [[1, 1], [1, 2], [2, 2]]],
+  [5, 4, { r: 4, c: 2 }, { r: 0, c: 1 }, [[1, 1], [2, 2], [3, 1]]],
+  [5, 5, { r: 2, c: 2 }, { r: 0, c: 4 }, [[0, 2], [1, 2], [2, 0], [3, 3]]],
+  [5, 5, { r: 0, c: 4 }, { r: 4, c: 0 }, [[1, 3], [2, 1], [2, 2], [3, 1]]],
+  [4, 5, { r: 1, c: 0 }, { r: 1, c: 4 }, [[1, 1], [1, 2], [1, 3], [2, 2]]],
+  [6, 6, { r: 0, c: 0 }, { r: 5, c: 5 }, [[1, 2], [2, 4], [3, 1], [3, 3], [4, 2], [4, 4]]]
+];
 
-diffBtns.forEach(btn=>{
-  btn.onclick = ()=>{
-    diffBtns.forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-    const size = btn.dataset.size;
-    config.rows = size === "4x2" ? 4 :4;
-    config.cols = size === "4x2" ?2 :4;
-    startGame();
+let currentLevel = 0;
+let path = [];
+let grid = [];
+let rows, cols, startPos, endPos, walls;
+
+function renderLevel() {
+  if (currentLevel >= levels.length) {
+    allClearModal.style.display = "flex";
+    return;
   }
-})
+  const L = levels[currentLevel];
+  rows = L[0];
+  cols = L[1];
+  startPos = L[2];
+  endPos = L[3];
+  walls = L[4];
 
-restartBtn.onclick = startGame;
-playAgainBtn.onclick = ()=>{
+  path = [{ r: startPos.r, c: startPos.c }];
   winModal.style.display = "none";
-  startGame();
-}
+  allClearModal.style.display = "none";
 
-function startGame(){
-  clearInterval(timer);
-  seconds = 0;
-  step = 0;
-  matched = 0;
-  openedCards = [];
-  isLock = false;
-  stepEl.textContent = step;
-  matchEl.textContent = matched;
-  timeEl.textContent = seconds;
-  winModal.style.display = "none";
-
-  totalPairs = (config.rows * config.cols)/2;
-  const useSymbols = symbols.slice(0, totalPairs);
-  cardList = [...useSymbols, ...useSymbols];
-  shuffle(cardList);
-
-  boardEl.style.gridTemplateColumns = `repeat(${config.cols}, 80px)`;
+  boardEl.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
   boardEl.innerHTML = "";
+  grid = [];
 
-  cardList.forEach((sym)=>{
-    const cardWrap = document.createElement("div");
-    cardWrap.className = "card";
-    cardWrap.dataset.symbol = sym;
+  for (let r = 0; r < rows; r++) {
+    grid[r] = [];
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.r = r;
+      cell.dataset.c = c;
 
-    const back = document.createElement("div");
-    back.className = "card-back";
-    back.innerText = "?";
-    const front = document.createElement("div");
-    front.className = "card-front";
-    front.innerText = sym;
+      const isWall = walls.some(w => w[0] === r && w[1] === c);
+      const isStart = r === startPos.r && c === startPos.c;
+      const isEnd = r === endPos.r && c === endPos.c;
 
-    cardWrap.appendChild(back);
-    cardWrap.appendChild(front);
-    cardWrap.onclick = ()=>cardClick(cardWrap);
-    boardEl.appendChild(cardWrap);
-  })
+      if (isWall) { cell.classList.add("wall"); cell.innerText = "⚠"; }
+      if (isStart) { cell.classList.add("start"); cell.innerText = "S"; }
+      if (isEnd) { cell.classList.add("end"); cell.innerText = "E"; }
 
-  timer = setInterval(()=>{
-    seconds++;
-    timeEl.textContent = seconds;
-  },1000);
-}
-
-function shuffle(arr){
-  for(let i = arr.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]] = [arr[j],arr[i]];
-  }
-}
-
-function cardClick(card){
-  if(isLock) return;
-  if(card.classList.contains("flip")) return;
-  if(card.classList.contains("matched")) return;
-
-  card.classList.add("flip");
-  openedCards.push(card);
-
-  if(openedCards.length === 2){
-    step++;
-    stepEl.textContent = step;
-    checkMatch();
-  }
-}
-
-function checkMatch(){
-  isLock = true;
-  const c1 = openedCards[0];
-  const c2 = openedCards[1];
-
-  if(c1.dataset.symbol === c2.dataset.symbol){
-    c1.classList.add("matched");
-    c2.classList.add("matched");
-    matched++;
-    matchEl.textContent = matched;
-    openedCards = [];
-    isLock = false;
-
-    if(matched === totalPairs){
-      clearInterval(timer);
-      setTimeout(()=>{
-        finalStepEl.textContent = step;
-        finalTimeEl.textContent = seconds;
-        winModal.style.display = "flex";
-      },400)
+      cell.onclick = () => cellClick(r, c);
+      boardEl.appendChild(cell);
+      grid[r][c] = cell;
     }
-  }else{
-    c1.classList.add("wrong");
-    c2.classList.add("wrong");
-    setTimeout(()=>{
-      c1.classList.remove("flip","wrong");
-      c2.classList.remove("flip","wrong");
-      openedCards = [];
-      isLock = false;
-    },900)
+  }
+  drawPath();
+}
+
+function drawPath() {
+  document.querySelectorAll(".cell.path, .cell.path-head")
+    .forEach(el => el.classList.remove("path", "path-head"));
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i];
+    grid[p.r][p.c].classList.add("path");
+  }
+  const head = path[path.length - 1];
+  grid[head.r][head.c].classList.add("path-head");
+}
+
+function cellClick(r, c) {
+  const head = path[path.length - 1];
+  const dr = Math.abs(r - head.r);
+  const dc = Math.abs(c - head.c);
+  if (dr + dc !== 1) return shakeCell(r, c);
+  if (walls.some(w => w[0] === r && w[1] === c)) return shakeCell(r, c);
+  if (path.some(p => p.r === r && p.c === c)) return shakeCell(r, c);
+
+  path.push({ r, c });
+  drawPath();
+
+  if (r === endPos.r && c === endPos.c) {
+    setTimeout(levelWin, 300);
   }
 }
 
-startGame();
+function shakeCell(r, c) {
+  const cell = grid[r][c];
+  cell.classList.add("shake");
+  setTimeout(() => cell.classList.remove("shake"), 400);
+}
+
+function levelWin() {
+  winMsgEl.innerText = `You solved level ${currentLevel + 1}!`;
+  winModal.style.display = "flex";
+}
+
+btnUndo.onclick = () => { if (path.length > 1) path.pop(), drawPath(); };
+btnReset.onclick = renderLevel;
+nextLevelBtn.onclick = () => { currentLevel++; renderLevel(); };
+restartAllBtn.onclick = () => { currentLevel = 0; renderLevel(); };
+
+renderLevel();

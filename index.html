@@ -3,40 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Memory Match V1.0</title>
+  <title>Memory Match</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="container">
-  <h1>Memory Match</h1>
-
-  <div class="control-bar">
-    <div class="diff-group">
-      <label>Difficulty:</label>
-      <button class="diff-btn active" data-size="4x4">Normal 4×4</button>
-      <button class="diff-btn" data-size="4x2">Easy 4×2</button>
+  <div class="container">
+    <h1>Memory Match</h1>
+    <div class="control-bar">
+      <button id="btnUndo">Undo</button>
+      <button id="btnReset">Reset</button>
     </div>
-    <button id="restartBtn">🔄 Restart</button>
+    <div id="gameBoard" class="board"></div>
   </div>
 
-  <div class="status-panel">
-    <div>Steps: <span id="stepCount">0</span></div>
-    <div>Paired: <span id="matchCount">0</span></div>
-    <div>Time: <span id="timeCount">0</span> s</div>
+  <div id="winModal" class="modal">
+    <div class="modal-content">
+      <h2>Level Cleared!</h2>
+      <p id="winMsg"></p>
+      <button id="nextLevelBtn">Next Level</button>
+    </div>
   </div>
 
-  <div id="gameBoard" class="board"></div>
-</div>
-
-<div id="winModal" class="modal">
-  <div class="modal-content">
-    <h2>🎉 Congratulations!</h2>
-    <p>Total Steps: <span id="finalStep"></span></p>
-    <p>Total Time: <span id="finalTime"></span> seconds</p>
-    <button id="playAgainBtn">Play Again</button>
+  <div id="allClearModal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 All Levels Complete!</h2>
+      <p>You finished all puzzles!</p>
+      <button id="restartAllBtn">Restart</button>
+    </div>
   </div>
-</div>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
